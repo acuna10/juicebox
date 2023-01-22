@@ -1,16 +1,27 @@
-// grab our client with destructuring from the export in index.js
-const { client, getAllUsers, createUser, updateUser, getUserById, createPost, updatePost, getAllPosts, getAllTags, getPostsByTagName } = require('./index');
+const {
+    client,
+    createUser,
+    updateUser,
+    getAllUsers,
+    getUserById,
+    createPost,
+    updatePost,
+    getAllPosts,
+    getAllTags,
+    getPostsByTagName,
+} = require('./index');
 
 async function dropTables() {
     try {
         console.log("Starting to drop tables...");
 
+        // have to make sure to drop in correct order
         await client.query(`
-        DROP TABLE IF EXISTS users;
-        DROP TABLE IF EXISTS tags;
-        DROP TABLE IF EXISTS posts;
-        DROP TABLE IF EXISTS users;
-        `);
+      DROP TABLE IF EXISTS post_tags;
+      DROP TABLE IF EXISTS tags;
+      DROP TABLE IF EXISTS posts;
+      DROP TABLE IF EXISTS users;
+    `);
 
         console.log("Finished dropping tables!");
     } catch (error) {
@@ -21,37 +32,41 @@ async function dropTables() {
 
 async function createTables() {
     try {
+        console.log("Starting to build tables...");
+
         await client.query(`
-        CREATE TABLE users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(255) UNIQUE NOT NULL,
-            password VARCHAR(255) NOT NULL,
-            name VARCHAR(255) NOT NULL,
-            location VARCHAR(255) NOT NULL,
-            active BOOLEAN DEFAULT true
-        );
-        CREATE TABLE posts (
-            id SERIAL PRIMARY KEY,
-            "authorId" INTEGER REFERENCES users(id),
-            title varchar(255) NOT NULL,
-            content TEXT NOT NULL,
-            active BOOLEAN DEFAULT true
-         );
-         CREATE TABLE tags (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) UNIQUE NOT NULL
-         );
-         CREATE TABEL post_tags (
-            "postId" INTEGER REFERENCES posts(id),
-            "tagId" INTEGER REFERENCES tags(id),
-            time VARCHAR(255) UNIQUE
-         )
+      CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
+        username varchar(255) UNIQUE NOT NULL,
+        password varchar(255) NOT NULL,
+        name varchar(255) NOT NULL,
+        location varchar(255) NOT NULL,
+        active boolean DEFAULT true
+      );
 
-     `);
+      CREATE TABLE posts (
+        id SERIAL PRIMARY KEY,
+        "authorId" INTEGER REFERENCES users(id),
+        title varchar(255) NOT NULL,
+        content TEXT NOT NULL,
+        active BOOLEAN DEFAULT true
+      );
 
-        console.log("Finished building tables!")
+      CREATE TABLE tags (
+        id SERIAL PRIMARY KEY,
+        name varchar(255) UNIQUE NOT NULL
+      );
+
+      CREATE TABLE post_tags (
+        "postId" INTEGER REFERENCES posts(id),
+        "tagId" INTEGER REFERENCES tags(id),
+        UNIQUE ("postId", "tagId")
+      );
+    `);
+
+        console.log("Finished building tables!");
     } catch (error) {
-        console.log("Error building tables!")
+        console.error("Error building tables!");
         throw error;
     }
 }
@@ -60,18 +75,28 @@ async function createInitialUsers() {
     try {
         console.log("Starting to create users...");
 
-         await createUser
-             ({ username: 'albert', password: 'bertie99', name: 'Al Bert', location: 'Sydney, Australia' });
+        await createUser({
+            username: 'albert',
+            password: 'bertie99',
+            name: 'Al Bert',
+            location: 'Sidney, Australia'
+        });
+        await createUser({
+            username: 'sandra',
+            password: '2sandy4me',
+            name: 'Just Sandra',
+            location: 'Ain\'t tellin\''
+        });
+        await createUser({
+            username: 'glamgal',
+            password: 'soglam',
+            name: 'Joshua',
+            location: 'Upper East Side'
+        });
 
-         await createUser    
-            ({ username: 'sandra', password: '2sandy4me', name:'Just Sandra', location: 'Ain\'t tellin\'' });
-
-         await createUser    
-            ({ username: 'glamgal', password: 'soglam', name: 'Joshua', location:'Upper East Side' });
-
-        console.log("Finished creating users!!");
+        console.log("Finished creating users!");
     } catch (error) {
-        console.log("Error creating users!!");
+        console.error("Error creating users!");
         throw error;
     }
 }
@@ -111,12 +136,13 @@ async function createInitialPosts() {
 async function rebuildDB() {
     try {
         client.connect();
+
         await dropTables();
         await createTables();
         await createInitialUsers();
         await createInitialPosts();
     } catch (error) {
-        console.log('Error Rebuilding DB')
+        console.log("Error during rebuildDB")
         throw error;
     }
 }
@@ -172,7 +198,8 @@ async function testDB() {
     }
 }
 
+
 rebuildDB()
     .then(testDB)
     .catch(console.error)
-    .finally(() => client.end())
+    .finally(() => client.end());
